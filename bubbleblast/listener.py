@@ -2,12 +2,14 @@
 #-*- coding:utf-8 -*-
 
 import pygame
+import logging
 
 from event import EventManager
 from event import TickEvent
 from event import ConfigTickEvent
-from event import MouseClickEvent
+from event import MouseClickRequest
 from event import QuitEvent
+from event import GameStartedEvent
 
 class Listener(object):
     """
@@ -41,7 +43,44 @@ class HIDController(Listener):
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_q:
                     self.evManager.Post(QuitEvent())
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
-                    self.evManager.Post(MouseClickEvent(ev))
+                    self.evManager.Post(MouseClickRequest(ev))
+
+class Map(Listener):
+    """
+    One open Map/Board (no sectors)
+    """
+    def __init__(self, evManager):
+        self.name = "Map"
+        self.evManager = evManager
+        evManager.Subscribe(self)
+
+    def Notify(self, event):
+        pass
+
+class Player(Listener):
+    """
+    """
+    def __init__(self, evManager):
+        self.name = "Player"
+        self.evManager = evManager
+        evManager.Subscribe(self)
+
+        self.map = Map(evManager)
+        self.charactors = [ Charactor(evManager) ]
+
+    def Notify(self, event):
+        pass
+
+class Charactor(Listener):
+    """
+    """
+    def __init__(self, evManager):
+        self.name = "Charactor"
+        self.evManager = evManager
+        evManager.Subscribe(self)
+
+    def Notify(self, event):
+        pass
 
 class Game(Listener):
     """
@@ -52,8 +91,11 @@ class Game(Listener):
         self.evManager = evManager
         evManager.Subscribe(self)
 
+        self.players = [Player(evManager)]
+
     def Notify(self, event):
-        pass
+        if isinstance(event, GameStartedEvent):
+            logging.debug("Game started")
 
 class PygameView(Listener):
     """
@@ -94,6 +136,7 @@ class CPUSpinnerController(Listener):
         self.clock = pygame.time.Clock()
 
     def Run(self):
+        self.evManager.Post(GameStartedEvent())
         while self.isRunning:
             self.clock.tick(self.clocktick)
             ev = TickEvent()

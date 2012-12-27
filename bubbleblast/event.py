@@ -59,10 +59,18 @@ class TickEvent(Event):
     def __init__(self):
         self.name = "CPU Tick Event"
 
-class MouseClickEvent(Event):
+class GameStartedEvent(Event):
     """
-    Mouse Click Event
+    Game Started Event
+    """
+    def __init__(self):
+        self.name = "Game Started Event"
+
+
+class MouseClickRequest(Event):
+    """
+    Mouse Click Request 
     """
     def __init__(self, event):
-        self.name = "Mouse Click Event"
+        self.name = "Mouse Click Request"
         self.event = event
