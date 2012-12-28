@@ -56,8 +56,9 @@ class TickEvent(Event):
     """
     CPU Tick Event
     """
-    def __init__(self):
+    def __init__(self, tick=0):
         self.name = "CPU Tick Event"
+        self.tick = tick
 
 class GameStartedEvent(Event):
     """
@@ -66,6 +67,71 @@ class GameStartedEvent(Event):
     def __init__(self):
         self.name = "Game Started Event"
 
+class CharactorPlaceRequest(Event):
+    """
+    Charactor Place Request
+    """
+    def __init__(self):
+        self.name = "Charactor Place Request"
+
+class CharactorImplodeEvent(Event):
+    """
+    Charactor Implode Event
+    """
+    def __init__(self, charactor):
+        self.name = "Charactor Implode Event"
+        self.charactor = charactor
+
+class CharactorShrinkEvent(Event):
+    """
+    Charactor Shrink Event
+    """
+    def __init__(self, charactor):
+        self.name = "Charactor Shrink Event"
+        self.charactor = charactor
+
+
+class CharactorRemoveRequest(Event):
+    """
+    Charactor Remove Request
+    """
+    def __init__(self, charactor):
+        self.name = "Charactor Remove Request"
+        self.charactor = charactor
+
+class CharactorSpriteRemoveRequest(Event):
+    """
+    Charactor Sprite Remove Request
+    """
+    def __init__(self, charactor):
+        self.name = "Charactor Sprite Remove Request"
+        self.charactor = charactor
+
+
+class CharactorRemovedEvent(Event):
+    """
+    Charactor Removed Event
+    """
+    def __init__(self):
+        self.name = "Charactor Removed Event"
+
+
+class CharactorPlacedEvent(Event):
+    """
+    Charactor Placed Event
+    """
+    def __init__(self, charactor):
+        self.name = "Charactor Placed Event"
+        self.charactor = charactor
+
+
+class MapBuiltEvent(Event):
+    """
+    Map Built Event
+    """
+    def __init__(self, map):
+        self.name = "Map Built Event"
+        self.map = map
 
 class MouseClickRequest(Event):
     """
@@ -74,3 +140,12 @@ class MouseClickRequest(Event):
     def __init__(self, event):
         self.name = "Mouse Click Request"
         self.event = event
+
+class MouseClickHoldRequest(Event):
+    """
+    Mouse Click and Hold Request 
+    """
+    def __init__(self, button, position):
+        self.name = "Mouse Click and Hold Request (x:%d, y:%d)" % position
+        self.button = button
+        self.position = position
