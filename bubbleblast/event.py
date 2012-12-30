@@ -71,8 +71,11 @@ class CharactorPlaceRequest(Event):
     """
     Charactor Place Request
     """
-    def __init__(self):
+    def __init__(self, coordinates, speed=2, radius=50):
         self.name = "Charactor Place Request"
+        self.coordinates = coordinates
+        self.speed = speed
+        self.radius = radius
 
 class CharactorImplodeEvent(Event):
     """

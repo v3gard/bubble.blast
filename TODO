@@ -1,0 +1,13 @@
+Levels:
+ - Each level should consist of X amounts of bubbles to burst
+ - Bubbles should be able to appear simultaneously and sequentially
+  - e.g. Two bubbles appear at level start. When either bubble is bursted,
+    another appers
+
+Random coordinates:
+ - The coordinates of the bubbles should be random. However, the bubbles should
+   not be allowed to "collide" or overlap. This requires code that parses the
+   locations and radiuses of existing bubbles and determining where to place
+   the next.
+ - The game map size must also be taken into consideration to avoid having
+   bubbles appear off-screen (or half-wau off screen)

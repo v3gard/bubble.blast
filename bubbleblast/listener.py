@@ -103,14 +103,9 @@ class Charactor(Listener):
         self.sprite = None
         evManager.Subscribe(self)
 
-    def Place(self, coordinates):
-        self.coordinates = coordinates
-        ev = CharactorPlacedEvent(self)
-        self.evManager.Post(ev)
-
     def Notify(self, event):
         if isinstance(event, CharactorPlaceRequest):
-            self.Place((50,50))
+            self.Place(event)
 
 class Game(Listener):
     """
@@ -152,9 +147,32 @@ class Game(Listener):
             # center position for the game window (or provide random
             # coordinates within the limits of the game window)
             # (this gets more important when adding different levels)
-            self.evManager.Post(CharactorPlaceRequest())
+            #self.evManager.Post(CharactorPlaceRequest((200,100), 2, 40))
+            #self.evManager.Post(CharactorPlaceRequest((350,350), 5, 100))
+            c1 = Charactor(self.evManager)
+            c2 = Charactor(self.evManager)
+            c3 = Charactor(self.evManager)
+            c1.coordinates = (350,350)
+            c1.speed = 3
+            c1.radius = 100
+            c2.coordinates = (200,100)
+            c2.speed = 6
+            c2.radius = 40
+            c3.coordinates = (500,50)
+            c3.speed = 4
+            c3.radius = 40
+            self.charactors.append(c1)
+            self.charactors.append(c2)
+            self.charactors.append(c3)
+            
+            for c in self.charactors:
+                ev = CharactorPlacedEvent(c)
+                self.evManager.Post(ev)
+
+
         elif isinstance(event, CharactorPlacedEvent):
-            self.charactors.append(event.charactor)
+            #self.charactors.append(event.charactor)
+            pass
         elif isinstance(event, CharactorImplodeEvent):
             # here we count the amount of implodes (this is a BAD thing. we
             # want the bubbles to be blasted!)
@@ -194,7 +212,7 @@ class PygameView(Listener):
 
     def ShowCharactor(self, charactor):
         #charactorSprite = Box((50,50), (255,0,0),charactor.coordinates, self.frontSprites)
-        charactorSprite = Bubble(charactor.radius, self.frontSprites, self.screen.get_rect().center)
+        charactorSprite = Bubble(charactor.radius, self.frontSprites, charactor.coordinates)
         charactor.sprite = charactorSprite
         #charactorSprite.rect.center = self.background.get_rect().center
 
