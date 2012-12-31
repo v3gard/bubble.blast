@@ -3,6 +3,9 @@ Levels:
  - Bubbles should be able to appear simultaneously and sequentially
   - e.g. Two bubbles appear at level start. When either bubble is bursted,
     another appers
+  - Bubble placing should not take into action when the user bursts a bubble.
+    Placing of bubbles should be time based only. (e.g. one bubble appears at
+    t=0, another at t=5, and a final at t=10)
 
 Random coordinates:
  - The coordinates of the bubbles should be random. However, the bubbles should

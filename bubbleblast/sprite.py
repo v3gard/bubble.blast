@@ -34,9 +34,10 @@ class Bubble(pygame.sprite.Sprite):
         self.image = self.image.convert_alpha()
 
     def Shrink(self, radius):
-        charactorSurf = pygame.Surface((radius*2, radius*2))
-        pygame.draw.circle(charactorSurf, self.color, (radius,radius), radius)
-        self.image = charactorSurf
-        self.rect = charactorSurf.get_rect()
-        self.rect.center = self.pos
-        self.image = self.image.convert_alpha()
+        if radius>0:
+            charactorSurf = pygame.Surface((radius*2, radius*2))
+            pygame.draw.circle(charactorSurf, self.color, (radius,radius), radius)
+            self.image = charactorSurf
+            self.rect = charactorSurf.get_rect()
+            self.rect.center = self.pos
+            self.image = self.image.convert_alpha()

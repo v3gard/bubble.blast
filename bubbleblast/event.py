@@ -37,6 +37,13 @@ class Event(object):
     def __init__(self):
         self.name = "Generic Event"
         
+class PauseEvent(Event):
+    """
+    Pause Event. Used for pausing the game.
+    """
+    def __init__(self):
+        self.name = "Pause Event"
+
 class ConfigTickEvent(Event):
     """
     Config Tick Event. Used for setting pygame clock tick (e.g. 60 fps)

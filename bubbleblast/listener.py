@@ -3,6 +3,7 @@
 
 import pygame
 import logging
+from random import random
 
 from event import EventManager
 from event import TickEvent
@@ -11,6 +12,7 @@ from event import ConfigTickEvent
 from event import MouseClickRequest
 from event import MouseClickHoldRequest
 from event import QuitEvent
+from event import PauseEvent
 from event import GameStartedEvent
 from event import CharactorPlaceRequest
 from event import CharactorPlacedEvent
@@ -55,6 +57,8 @@ class HIDController(Listener):
                     self.evManager.Post(QuitEvent())
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_q:
                     self.evManager.Post(QuitEvent())
+                elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_p:
+                    self.evManager.Post(PauseEvent())
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     self.evManager.Post(MouseClickRequest(ev))
             # handle mouse hold events
@@ -69,15 +73,27 @@ class Map(Listener):
         self.name = "Map"
         self.evManager = evManager
         evManager.Subscribe(self)
+        self.size = None
 
     def Build(self):
         # There is currently no map to build, but this will likely change in
         # the future.
+        self.size = (640, 480)
+        self.size = (1366, 768)
         ev = MapBuiltEvent(self)
         self.evManager.Post(ev)
 
     def Notify(self, event):
         pass
+
+    def get_available_position(self, radius):
+        """returns coordinates for a position on the map that is currently not
+        in use."""
+        # check map for available coordinates
+        xCoord = int(self.size[0]*random()) # TODO: temp workaround
+        yCoord = int(self.size[1]*random()) # TODO: temp workaround
+        return (xCoord, yCoord)
+    
 
 class Player(Listener):
     """
@@ -87,8 +103,6 @@ class Player(Listener):
         self.evManager = evManager
         evManager.Subscribe(self)
 
-        self.charactors = [ Charactor(evManager) ]
-
     def Notify(self, event):
         pass
 
@@ -96,12 +110,19 @@ class Charactor(Listener):
     """
     """
     def __init__(self, evManager):
-        self.name = "Charactor"
+        self.name = "Bubble Charactor"
         self.evManager = evManager
+        self.coordinates = (0,0)
         self.speed = 2
         self.radius = 100
         self.sprite = None
-        evManager.Subscribe(self)
+        #evManager.Subscribe(self)
+
+    def __init__(self, evManager, coordinates=(0,0), speed=2, radius=100):
+        self.speed=speed
+        self.radius=radius
+        self.coordinates=coordinates
+        self.sprite=None
 
     def Notify(self, event):
         if isinstance(event, CharactorPlaceRequest):
@@ -131,6 +152,12 @@ class Game(Listener):
         ev = GameStartedEvent()
         self.evManager.Post(ev)
 
+    def AddCharactor(self, charactor):
+        self.charactors.append(charactor)
+        ev = CharactorPlacedEvent(charactor)
+        self.evManager.Post(ev)
+
+
     def Notify(self, event):
         if isinstance(event, TickEvent):
             if self.state == Game.STATE_PREPARING:
@@ -149,30 +176,12 @@ class Game(Listener):
             # (this gets more important when adding different levels)
             #self.evManager.Post(CharactorPlaceRequest((200,100), 2, 40))
             #self.evManager.Post(CharactorPlaceRequest((350,350), 5, 100))
-            c1 = Charactor(self.evManager)
-            c2 = Charactor(self.evManager)
-            c3 = Charactor(self.evManager)
-            c1.coordinates = (350,350)
-            c1.speed = 3
-            c1.radius = 100
-            c2.coordinates = (200,100)
-            c2.speed = 6
-            c2.radius = 40
-            c3.coordinates = (500,50)
-            c3.speed = 4
-            c3.radius = 40
-            self.charactors.append(c1)
-            self.charactors.append(c2)
-            self.charactors.append(c3)
+            for i in range(4):
+                size = int(random()*100+50)
+                pos = self.map.get_available_position(size)
+                speed = int(random()*10)+5
+                self.AddCharactor(Charactor(self.evManager, pos, speed, size))
             
-            for c in self.charactors:
-                ev = CharactorPlacedEvent(c)
-                self.evManager.Post(ev)
-
-
-        elif isinstance(event, CharactorPlacedEvent):
-            #self.charactors.append(event.charactor)
-            pass
         elif isinstance(event, CharactorImplodeEvent):
             # here we count the amount of implodes (this is a BAD thing. we
             # want the bubbles to be blasted!)
@@ -182,8 +191,18 @@ class Game(Listener):
             self.charactors = tmpList
             self.evManager.Post(CharactorRemovedEvent())
 
+            size = int(random()*100)+50
+            pos = self.map.get_available_position(random()*150)
+            speed = int(random()*10)+4
 
+            self.AddCharactor(Charactor(self.evManager,pos, speed, size))
 
+        elif isinstance(event, PauseEvent):
+            if self.state == Game.STATE_RUNNING:
+                self.state = Game.STATE_PAUSED
+            else:
+                self.state = Game.STATE_RUNNING
+                
 
 class PygameView(Listener):
     """
@@ -196,7 +215,7 @@ class PygameView(Listener):
 
         pygame.init()
 
-        self.screen = pygame.display.set_mode((640, 480))
+        self.screen = pygame.display.set_mode((1366, 768))
         pygame.display.set_caption("Bubble Blast")
 
         background = pygame.Surface(self.screen.get_size())
@@ -208,6 +227,8 @@ class PygameView(Listener):
         self.frontSprites = pygame.sprite.RenderUpdates()
 
     def ShowMap(self, map):
+        # TODO: Should be able to adjust the screen resolution (i.e. window
+        # size) here during run-time.
         pass
 
     def ShowCharactor(self, charactor):
@@ -238,6 +259,8 @@ class PygameView(Listener):
         elif isinstance(event, CharactorSpriteRemoveRequest):
             self.frontSprites.remove(event.charactor.sprite)
             self.evManager.Post(CharactorRemoveRequest(event.charactor))
+        elif isinstance(event, MapBuiltEvent):
+            self.ShowMap(event.map)
 
 class CPUSpinnerController(Listener):
     """
@@ -248,7 +271,7 @@ class CPUSpinnerController(Listener):
         self.evManager = evManager
         evManager.Subscribe(self)
         self.isRunning = True
-        self.clocktick = 60
+        self.clocktick = 200
         self.clock = pygame.time.Clock()
         self.currentTick = 0
 
