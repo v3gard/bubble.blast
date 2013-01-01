@@ -4,6 +4,7 @@
 import pygame
 import logging
 from random import random
+from pygame.rect import Rect
 
 from event import EventManager
 from event import TickEvent
@@ -36,6 +37,7 @@ class Listener(object):
 
     def Notify(self, event):
         """Called from evManager. Notifies the listener of an event"""
+        print "woot"
         pass
 
 class HIDController(Listener):
@@ -62,8 +64,8 @@ class HIDController(Listener):
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     self.evManager.Post(MouseClickRequest(ev))
             # handle mouse hold events
-            if pygame.mouse.get_pressed()[0]:
-                self.evManager.Post(MouseClickHoldRequest(0, pygame.mouse.get_pos()))
+            #if pygame.mouse.get_pressed()[0]:
+            #    self.evManager.Post(MouseClickHoldRequest(0, pygame.mouse.get_pos()))
 
 class Map(Listener):
     """
@@ -79,7 +81,7 @@ class Map(Listener):
         # There is currently no map to build, but this will likely change in
         # the future.
         self.size = (640, 480)
-        self.size = (1366, 768)
+        #self.size = (1366, 768)
         ev = MapBuiltEvent(self)
         self.evManager.Post(ev)
 
@@ -157,6 +159,17 @@ class Game(Listener):
         ev = CharactorPlacedEvent(charactor)
         self.evManager.Post(ev)
 
+    def RemoveCharactor(self, charactor):
+        tmpList = [ x for x in self.charactors if id(charactor) != id(x) ]
+        self.charactors = tmpList
+        self.evManager.Post(CharactorRemovedEvent())
+
+        size = int(random()*100)+50
+        pos = self.map.get_available_position(random()*150)
+        speed = int(random()*10)+4
+
+        self.AddCharactor(Charactor(self.evManager,pos, speed, size))
+
 
     def Notify(self, event):
         if isinstance(event, TickEvent):
@@ -187,22 +200,19 @@ class Game(Listener):
             # want the bubbles to be blasted!)
             self.evManager.Post(CharactorSpriteRemoveRequest(event.charactor))
         elif isinstance(event, CharactorRemoveRequest):
-            tmpList = [ x for x in self.charactors if id(event.charactor) != id(x) ]
-            self.charactors = tmpList
-            self.evManager.Post(CharactorRemovedEvent())
-
-            size = int(random()*100)+50
-            pos = self.map.get_available_position(random()*150)
-            speed = int(random()*10)+4
-
-            self.AddCharactor(Charactor(self.evManager,pos, speed, size))
+            self.RemoveCharactor(event.charactor) 
 
         elif isinstance(event, PauseEvent):
             if self.state == Game.STATE_RUNNING:
                 self.state = Game.STATE_PAUSED
             else:
                 self.state = Game.STATE_RUNNING
-                
+        elif isinstance(event, MouseClickRequest):
+            pos = event.event.pos
+            ptrRect = Rect(pos, (5,5))
+            for c in self.charactors:
+                if ptrRect.colliderect(c.sprite.rect):
+                    self.evManager.Post(CharactorSpriteRemoveRequest(c))
 
 class PygameView(Listener):
     """
@@ -215,7 +225,8 @@ class PygameView(Listener):
 
         pygame.init()
 
-        self.screen = pygame.display.set_mode((1366, 768))
+        self.screen = pygame.display.set_mode((640, 480))
+        #self.screen = pygame.display.set_mode((1366, 768))
         pygame.display.set_caption("Bubble Blast")
 
         background = pygame.Surface(self.screen.get_size())
