@@ -41,3 +41,30 @@ class Bubble(pygame.sprite.Sprite):
             self.rect = charactorSurf.get_rect()
             self.rect.center = self.pos
             self.image = self.image.convert_alpha()
+
+class TextSprite(pygame.sprite.Sprite):
+    def __init__(self, pos, group, text="Undefined", size=36):
+        self.text = text
+        self.color = (255, 255, 255)
+        pygame.sprite.Sprite.__init__(self, group)
+        self.font = pygame.font.Font(None, size)
+        textRender = self.font.render(self.text, 1, self.color)
+        self.image = textRender
+        self.rect = textRender.get_rect(centerx=pos[0],centery=pos[1])
+
+class HUDSprite(pygame.sprite.Sprite):
+    def __init__(self, pos, game, group):
+        pygame.sprite.Sprite.__init__(self, group)
+        self.color = (255,255,255)
+        self.pos = pos
+        self.game = game
+        self.font = pygame.font.SysFont("Liberation Mono", 12)
+        self.text = None
+        textRender = self.font.render(self.text, 1, self.color)
+        self.image = textRender
+        self.rect = textRender.get_rect(centerx=pos[0], centery=pos[1])
+
+    def update(self):
+        self.text = "Level: %02d   ||   Score: %06d   ||   Lives: %1d" % (self.game.level, self.game.score, self.game.lives)
+        textRender = self.font.render(self.text, 1, self.color)
+        self.image = textRender

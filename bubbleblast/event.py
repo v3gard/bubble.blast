@@ -71,8 +71,38 @@ class GameStartedEvent(Event):
     """
     Game Started Event
     """
-    def __init__(self):
+    def __init__(self, game):
         self.name = "Game Started Event"
+        self.game = game
+
+class GameResetEvent(Event):
+    """
+    Game Reset Event
+    """
+    def __init__(self):
+        self.name = "Game Reset Event"
+
+class SpriteResetEvent(Event):
+    """
+    Sprite Reset Event
+    """
+    def __init__(self):
+        self.name = "Sprite Reset Event"
+
+class NextLevelRequest(Event):
+    """
+    Next Level Request
+    """
+    def __init__(self):
+        self.name = "Next Level Request"
+
+class GameOverEvent(Event):
+    """
+    Game Over Event
+    """
+    def __init__(self, game):
+        self.name = "Game Over Event"
+        self.game = game
 
 class CharactorPlaceRequest(Event):
     """

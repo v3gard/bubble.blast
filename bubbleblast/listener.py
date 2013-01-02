@@ -15,6 +15,10 @@ from event import MouseClickHoldRequest
 from event import QuitEvent
 from event import PauseEvent
 from event import GameStartedEvent
+from event import GameResetEvent
+from event import SpriteResetEvent
+from event import GameOverEvent
+from event import NextLevelRequest
 from event import CharactorPlaceRequest
 from event import CharactorPlacedEvent
 from event import CharactorImplodeEvent
@@ -25,6 +29,8 @@ from event import CharactorSpriteRemoveRequest
 
 from sprite import Box
 from sprite import Bubble
+from sprite import TextSprite
+from sprite import HUDSprite
 
 class Listener(object):
     """
@@ -59,6 +65,8 @@ class HIDController(Listener):
                     self.evManager.Post(QuitEvent())
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_q:
                     self.evManager.Post(QuitEvent())
+                elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_n:
+                    self.evManager.Post(GameResetEvent())
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_p:
                     self.evManager.Post(PauseEvent())
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
@@ -136,6 +144,7 @@ class Game(Listener):
     STATE_PREPARING = 0
     STATE_RUNNING = 1
     STATE_PAUSED = 2
+    STATE_GAMEOVER = 3
 
     def __init__(self, evManager):
         self.name = "Game Controller"
@@ -147,16 +156,61 @@ class Game(Listener):
         self.map = Map(evManager)
         self.players = [Player(evManager)]
         self.charactors = []
+        # for each level, the amount of bubbles will increase by 3. The initial
+        # bubble level is 5. 
+        # The initial number of bubbles to appear is 5. For each subsequent
+        # level, the amount increases by 3, the interval it takes for them to
+        # appear is reduced by 0.1 seconds and their speed will also slightly
+        # increase. (however the speed will likely increase for each 5th level
+        # or so). In any case, the different levels should be created
+        # automatically
+        self.score = None
+        self.level = None
+        self.lives = None
+        self.bubbles = None
+        self.interval = None
+        self.initialbubbles = 5
+        self.initiallives = 5
+        self.initialinterval = 300
+        self.initiallevel = 1
 
     def Start(self):
+
+        # should define the position here me thinks. however, I need the
+        # center position for the game window (or provide random
+        # coordinates within the limits of the game window)
+        # (this gets more important when adding different levels)
+
         self.map.Build()
+        self.score = 0
+        self.lives = self.initiallives
+        self.level = self.initiallevel
+        self.bubbles = self.initialbubbles
+        self.interval = self.initialinterval
+
         self.state = Game.STATE_RUNNING
-        ev = GameStartedEvent()
+
+        ev = GameStartedEvent(self)
         self.evManager.Post(ev)
 
-    def AddCharactor(self, charactor):
-        self.charactors.append(charactor)
-        ev = CharactorPlacedEvent(charactor)
+    def Stop(self):
+        self.state = Game.STATE_GAMEOVER
+        self.evManager.Post(GameOverEvent(self))
+
+    def Reset(self):
+        self.state = Game.STATE_PREPARING
+        self.charactors = []
+        self.evManager.Post(SpriteResetEvent())
+        self.Start()
+
+    def AddCharactor(self):
+        size = int(random()*100+50)
+        pos = self.map.get_available_position(size)
+        speed = int(random()*10)+5
+        ch = Charactor(self.evManager, pos, speed, size)
+        self.charactors.append(ch)
+
+        ev = CharactorPlacedEvent(ch)
         self.evManager.Post(ev)
 
     def RemoveCharactor(self, charactor):
@@ -165,54 +219,65 @@ class Game(Listener):
         self.evManager.Post(CharactorRemovedEvent())
 
         size = int(random()*100)+50
-        pos = self.map.get_available_position(random()*150)
+        pos = self.map.get_available_position(size)
         speed = int(random()*10)+4
-
-        self.AddCharactor(Charactor(self.evManager,pos, speed, size))
-
 
     def Notify(self, event):
         if isinstance(event, TickEvent):
             if self.state == Game.STATE_PREPARING:
                 self.Start()
             elif self.state == Game.STATE_RUNNING:
+                # handle existing charactors
                 for c in self.charactors:
                     if c.radius == 0:
                         self.evManager.Post(CharactorImplodeEvent(c))
                     if ((event.tick % c.speed) == 0):
                         c.radius -= 1
                         c.sprite.Shrink(c.radius)
-        elif isinstance(event, GameStartedEvent):
-            # should define the position here me thinks. however, I need the
-            # center position for the game window (or provide random
-            # coordinates within the limits of the game window)
-            # (this gets more important when adding different levels)
-            #self.evManager.Post(CharactorPlaceRequest((200,100), 2, 40))
-            #self.evManager.Post(CharactorPlaceRequest((350,350), 5, 100))
-            for i in range(4):
-                size = int(random()*100+50)
-                pos = self.map.get_available_position(size)
-                speed = int(random()*10)+5
-                self.AddCharactor(Charactor(self.evManager, pos, speed, size))
-            
+                # check if is time to add new charactor to game board
+                if (event.tick % self.interval == 0) and self.bubbles > 0:
+                    self.AddCharactor()
+                    self.bubbles -= 1
+                elif (self.bubbles == 0):
+                    self.evManager.Post(NextLevelRequest())
+
+        elif isinstance(event, NextLevelRequest):
+            self.level += 1
+            self.bubbles = self.initialbubbles + (3 * self.level)
+            if (self.interval >= 200):
+                self.interval -= 20
+            elif (self.interval < 200 and self.interval >= 100):
+                self.interval -= 10
+            elif (self.interval < 100 and self.interval >= 10):
+                self.interval -= 5
+            if (self.level % 3 == 0):
+                self.lives += 1
+
         elif isinstance(event, CharactorImplodeEvent):
             # here we count the amount of implodes (this is a BAD thing. we
             # want the bubbles to be blasted!)
+            self.lives -= 1
+            self.RemoveCharactor(event.charactor)
             self.evManager.Post(CharactorSpriteRemoveRequest(event.charactor))
-        elif isinstance(event, CharactorRemoveRequest):
-            self.RemoveCharactor(event.charactor) 
-
+            if self.lives == 0:
+                self.Stop()
         elif isinstance(event, PauseEvent):
             if self.state == Game.STATE_RUNNING:
                 self.state = Game.STATE_PAUSED
             else:
                 self.state = Game.STATE_RUNNING
         elif isinstance(event, MouseClickRequest):
-            pos = event.event.pos
-            ptrRect = Rect(pos, (5,5))
-            for c in self.charactors:
-                if ptrRect.colliderect(c.sprite.rect):
-                    self.evManager.Post(CharactorSpriteRemoveRequest(c))
+            if self.state == Game.STATE_RUNNING:
+                pos = event.event.pos
+                ptrRect = Rect(pos, (5,5))
+                for c in self.charactors:
+                    if ptrRect.colliderect(c.sprite.rect): # bubble burst
+                        self.score += (10+(self.level-1)*5)
+                        self.RemoveCharactor(c)
+                        self.evManager.Post(CharactorSpriteRemoveRequest(c))
+                        break
+        elif isinstance(event, GameResetEvent):
+            self.Reset()
 
 class PygameView(Listener):
     """
@@ -221,6 +286,7 @@ class PygameView(Listener):
     def __init__(self, evManager):
         self.name = "Pygame View"
         self.evManager = evManager
+        self.game = None
         evManager.Subscribe(self)
 
         pygame.init()
@@ -236,6 +302,7 @@ class PygameView(Listener):
 
         self.backSprites = pygame.sprite.RenderUpdates()
         self.frontSprites = pygame.sprite.RenderUpdates()
+        self.HUDSprites = pygame.sprite.RenderUpdates()
 
     def ShowMap(self, map):
         # TODO: Should be able to adjust the screen resolution (i.e. window
@@ -248,19 +315,31 @@ class PygameView(Listener):
         charactor.sprite = charactorSprite
         #charactorSprite.rect.center = self.background.get_rect().center
 
+    def ShowGameOver(self, game):
+        posx = self.background.get_width()/2
+        posy = self.background.get_height()/2
+        TextSprite((posx,posy),self.frontSprites, size=60, text="GAME OVER")
+        TextSprite((posx,posy+40),self.frontSprites, size=20, text="Score: %d" % game.score)
+
+    def Clear(self):
+        self.frontSprites.empty()
+
     def Notify(self, event):
         if isinstance(event, TickEvent):
             # Draw everything
             self.screen.blit(self.background, (0,0))
             self.backSprites.clear( self.screen, self.background )
             self.frontSprites.clear( self.screen, self.background )
+            self.HUDSprites.clear( self.screen, self.background )
 
             self.backSprites.update()
             self.frontSprites.update()
+            self.HUDSprites.update()
 
             dirtyRects1 = self.backSprites.draw(self.screen)
             dirtyRects2 = self.frontSprites.draw(self.screen)
-            dirtyRects = dirtyRects1+dirtyRects2
+            dirtyRects3 = self.HUDSprites.draw(self.screen)
+            dirtyRects = dirtyRects1+dirtyRects2+dirtyRects3
 
             pygame.display.update(dirtyRects)
 
@@ -269,9 +348,19 @@ class PygameView(Listener):
             self.ShowCharactor(event.charactor)
         elif isinstance(event, CharactorSpriteRemoveRequest):
             self.frontSprites.remove(event.charactor.sprite)
-            self.evManager.Post(CharactorRemoveRequest(event.charactor))
         elif isinstance(event, MapBuiltEvent):
             self.ShowMap(event.map)
+        elif isinstance(event, GameStartedEvent):
+            self.game = event.game
+            posx = self.background.get_width()/2
+            posy = self.background.get_height()/2
+            hs = HUDSprite((posx,posy),event.game, self.HUDSprites)
+            hs.rect.topleft = self.screen.get_rect().topleft
+        elif isinstance(event, GameOverEvent):
+            self.Clear()
+            self.ShowGameOver(event.game)
+        elif isinstance(event, SpriteResetEvent):
+            self.Clear()
 
 class CPUSpinnerController(Listener):
     """
@@ -282,7 +371,7 @@ class CPUSpinnerController(Listener):
         self.evManager = evManager
         evManager.Subscribe(self)
         self.isRunning = True
-        self.clocktick = 200
+        self.clocktick = 240
         self.clock = pygame.time.Clock()
         self.currentTick = 0
 

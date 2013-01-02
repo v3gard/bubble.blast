@@ -1,5 +1,8 @@
 [  0%] - Provide "random" coordinates that doesn't collide with existing bubbles.
-[  0%] - Implement a level system
+[100%] - Implement a level system
 [  0%] - Add a high score list
-[  0%] - Implement a point system
-[ 80%] - Make it possible to click on bubbles (popping them)
+[100%] - Implement a point system
+[100%] - Make it possible to click on bubbles (popping them)
+[  0%] - Add a game menu
+[  0%] - Make bubbles change color when shrinking (e.g. green at first and fade to yellow/red)
+
