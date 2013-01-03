@@ -3,6 +3,8 @@
 
 import pygame
 import logging
+import pickle
+import os
 from random import random
 from pygame.rect import Rect
 
@@ -19,6 +21,7 @@ from event import GameResetEvent
 from event import SpriteResetEvent
 from event import GameOverEvent
 from event import NextLevelRequest
+from event import HighscoreEvent
 from event import CharactorPlaceRequest
 from event import CharactorPlacedEvent
 from event import CharactorImplodeEvent
@@ -112,6 +115,7 @@ class Player(Listener):
         self.name = "Player"
         self.evManager = evManager
         evManager.Subscribe(self)
+        self.score = 0
 
     def Notify(self, event):
         pass
@@ -146,6 +150,8 @@ class Game(Listener):
     STATE_PAUSED = 2
     STATE_GAMEOVER = 3
 
+    FILE_HIGHSCORE = "~/.bubbleblast/highscore"
+
     def __init__(self, evManager):
         self.name = "Game Controller"
         self.evManager = evManager
@@ -154,17 +160,12 @@ class Game(Listener):
         logging.debug("Initialized game to preparing state")
 
         self.map = Map(evManager)
-        self.players = [Player(evManager)]
+        self.player = Player(evManager)
         self.charactors = []
-        # for each level, the amount of bubbles will increase by 3. The initial
-        # bubble level is 5. 
-        # The initial number of bubbles to appear is 5. For each subsequent
-        # level, the amount increases by 3, the interval it takes for them to
-        # appear is reduced by 0.1 seconds and their speed will also slightly
-        # increase. (however the speed will likely increase for each 5th level
-        # or so). In any case, the different levels should be created
-        # automatically
-        self.score = None
+
+        # initial values
+        self.gotHighscore = False
+        self.highscore = None
         self.level = None
         self.lives = None
         self.bubbles = None
@@ -182,7 +183,9 @@ class Game(Listener):
         # (this gets more important when adding different levels)
 
         self.map.Build()
-        self.score = 0
+        self.player.score = 0
+        self.gotHighscore = False
+        self.highscore = self.ReadHighscore()
         self.lives = self.initiallives
         self.level = self.initiallevel
         self.bubbles = self.initialbubbles
@@ -195,6 +198,7 @@ class Game(Listener):
 
     def Stop(self):
         self.state = Game.STATE_GAMEOVER
+        self.SaveHighscore()
         self.evManager.Post(GameOverEvent(self))
 
     def Reset(self):
@@ -222,10 +226,42 @@ class Game(Listener):
         pos = self.map.get_available_position(size)
         speed = int(random()*10)+4
 
+    def ReadHighscore(self):
+        try:
+            with open(os.path.expanduser(Game.FILE_HIGHSCORE), "r") as f:
+                logging.info("Reading high score from file")
+                highscore = pickle.load(f)
+                return highscore
+        except pickle.PickleError, e:
+            logging.error("Unable to read high score from file. Error: %s" % e)
+        except IOError, e:
+            logging.error("Unable to open high score file for reading. Error: %s" % e)
+        except EOFError, e:
+            logging.error("Unknown parsing error. Error: %s" % e)
+        return 0
+
+    def SaveHighscore(self, force=False):
+        if (self.player.score < self.highscore):
+            return
+        elif force==True:
+            pass
+        try:
+            with open(os.path.expanduser(Game.FILE_HIGHSCORE), "w") as f:
+                #if os.path.exists(os.path.dirname(os.path.expanduser(Game.FILE_HIGHSCORE))):
+                #    if os.path.exists(os.path.expanduser(Game.FILE_HIGHSCORE)):
+                logging.info("Saving highscore value of %d" % self.player.score)
+                pickle.dump(self.player.score, f)
+        except pickle.PickleError, e:
+            logging.error("Unable to save high score to file. Error: %s" % e)
+        except IOError, e:
+            logging.error("Unable to open high score file for writing. Error: %s" % e)
+
     def Notify(self, event):
         if isinstance(event, TickEvent):
+            ### GAME IS PREPARING
             if self.state == Game.STATE_PREPARING:
                 self.Start()
+            ### GAME IS RUNNING
             elif self.state == Game.STATE_RUNNING:
                 # handle existing charactors
                 for c in self.charactors:
@@ -240,6 +276,11 @@ class Game(Listener):
                     self.bubbles -= 1
                 elif (self.bubbles == 0):
                     self.evManager.Post(NextLevelRequest())
+                elif (self.player.score > self.highscore):
+                    self.highscore = self.player.score
+                    if (self.gotHighscore == False):
+                        self.gotHighscore = True
+                        self.evManager.Post(HighscoreEvent())
 
         elif isinstance(event, NextLevelRequest):
             self.level += 1
@@ -272,7 +313,7 @@ class Game(Listener):
                 ptrRect = Rect(pos, (5,5))
                 for c in self.charactors:
                     if ptrRect.colliderect(c.sprite.rect): # bubble burst
-                        self.score += (10+(self.level-1)*5)
+                        self.player.score += (10+(self.level-1)*5)
                         self.RemoveCharactor(c)
                         self.evManager.Post(CharactorSpriteRemoveRequest(c))
                         break
@@ -319,7 +360,10 @@ class PygameView(Listener):
         posx = self.background.get_width()/2
         posy = self.background.get_height()/2
         TextSprite((posx,posy),self.frontSprites, size=60, text="GAME OVER")
-        TextSprite((posx,posy+40),self.frontSprites, size=20, text="Score: %d" % game.score)
+        if game.gotHighscore:
+            TextSprite((posx,posy+60),self.frontSprites, size=20, text="New highscore of %d achieved! Congratulations!" % game.player.score)
+        else:
+            TextSprite((posx,posy+60),self.frontSprites, size=20, text="Score: %d" % game.player.score)
 
     def Clear(self):
         self.frontSprites.empty()

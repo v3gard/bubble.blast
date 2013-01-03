@@ -47,7 +47,7 @@ class TextSprite(pygame.sprite.Sprite):
         self.text = text
         self.color = (255, 255, 255)
         pygame.sprite.Sprite.__init__(self, group)
-        self.font = pygame.font.Font(None, size)
+        self.font = pygame.font.SysFont("Liberation Sans", size)
         textRender = self.font.render(self.text, 1, self.color)
         self.image = textRender
         self.rect = textRender.get_rect(centerx=pos[0],centery=pos[1])
@@ -65,6 +65,6 @@ class HUDSprite(pygame.sprite.Sprite):
         self.rect = textRender.get_rect(centerx=pos[0], centery=pos[1])
 
     def update(self):
-        self.text = "Level: %02d   ||   Score: %06d   ||   Lives: %1d" % (self.game.level, self.game.score, self.game.lives)
+        self.text = "Level: %02d   ||   Highscore: %05d   ||   Score: %06d   ||   Lives: %1d" % (self.game.level, self.game.highscore, self.game.player.score, self.game.lives)
         textRender = self.font.render(self.text, 1, self.color)
         self.image = textRender

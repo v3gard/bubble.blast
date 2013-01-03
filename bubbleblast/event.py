@@ -44,6 +44,14 @@ class PauseEvent(Event):
     def __init__(self):
         self.name = "Pause Event"
 
+class HighscoreEvent(Event):
+    """
+    Highscore Event. Used for notifying the user of achieving the highest score.
+    """
+    def __init__(self):
+        self.name = "Highscore Event"
+
+
 class ConfigTickEvent(Event):
     """
     Config Tick Event. Used for setting pygame clock tick (e.g. 60 fps)
